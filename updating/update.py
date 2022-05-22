@@ -23,31 +23,16 @@ VALID_LICENSES = [
     "CC BY-SA 3.0",
 ]  # TODO: these are just the ones in the doc
 
-# TODO: d9j when filename in jasima
-NO_URL_NAME = {
-    "Toki Pona Bubble",  # yes I know
-    "insa pi supa lape",
-    "sitelen Sans",
-    "sitelen Antowi",
-    "toki pona OTF",
-    "sitelen telo",
-}
-FILENAME_MAP = {key: f"{key}-fixme.ttf" for key in NO_URL_NAME}
-
 FONTDIR = ".."
+
+# TODO: unzipping + fetching behavior for ipsl
+SPECIAL = {"insa pi supa lape": lambda x: x}
 
 
 def download(url: str) -> bytes:
     req = urllib.request.Request(url, headers=HEADERS)
     resp = urllib.request.urlopen(req).read()
     return resp
-
-
-# TODO: d5j when filename in jasima
-def get_filename(url: str) -> str:
-    # MOST download links contain the filename
-    # stopgap until filename is in jasima
-    return url.split("/")[-1]
 
 
 def write_font(filename: str, content: bytes) -> int:
@@ -76,17 +61,11 @@ def main(argv):
         # TODO: anything on Box and Drive cannot be directly downloaded
 
         try:
-            LOG.debug("NAME: %s" % name)
-            download_url = data["links"]["fontfile"]
-            LOG.debug("LINK: %s" % download_url)
-            filename = (
-                get_filename(download_url)
-                if name not in NO_URL_NAME
-                else FILENAME_MAP[name]
-            )
-            LOG.debug("FILE: %s" % filename)
+            LOG.debug("NAME: %s", name)
+            LOG.debug("LINK: %s", data["links"]["fontfile"])
+            LOG.debug("FILE: %s", data["filename"])
             font = download(data["links"]["fontfile"])
-            write_font(filename, font)
+            write_font(data["filename"], font)
         except Exception as e:
             LOG.error(e.__dict__)
 

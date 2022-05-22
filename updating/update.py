@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 import argparse
-import pygsheets
-import requests
+import urllib.request  # avoiding requests dep bc we can
+import json
+from datetime import datetime
+import os
+import logging
 
-CLIENT = pygsheets.authorize()
+LOG = logging.getLogger()
 
-TP_RESOURCES_SHEETS_URL = "https://docs.google.com/spreadsheets/d/1DMgOQHw3R5yyrNF9BwWw9nWMwYaxI7D40-oEhI2Gm-c"
+HEADERS = {  # pretend to be Chrome 101 for Discord links
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36"
+}
 
-
-FONTS_SHEET = 0
-
-# cols are 1 indexed
-DOWNLOAD_COL = 3
-LICENSE_COL = 7
+JASIMA = "https://raw.githubusercontent.com/lipu-linku/jasima/master/data.json"
 
 VALID_LICENSES = [
     "GPL",
@@ -23,26 +23,72 @@ VALID_LICENSES = [
     "CC BY-SA 3.0",
 ]  # TODO: these are just the ones in the doc
 
+# TODO: d9j when filename in jasima
+NO_URL_NAME = {
+    "Toki Pona Bubble",  # yes I know
+    "insa pi supa lape",
+    "sitelen Sans",
+    "sitelen Antowi",
+    "toki pona OTF",
+    "sitelen telo",
+}
+FILENAME_MAP = {key: f"{key}-fixme.ttf" for key in NO_URL_NAME}
+
+FONTDIR = ".."
+
+
+def download(url: str) -> bytes:
+    req = urllib.request.Request(url, headers=HEADERS)
+    resp = urllib.request.urlopen(req).read()
+    return resp
+
+
+# TODO: d5j when filename in jasima
+def get_filename(url: str) -> str:
+    # MOST download links contain the filename
+    # stopgap until filename is in jasima
+    return url.split("/")[-1]
+
+
+def write_font(filename: str, content: bytes) -> int:
+    with open(os.path.join(FONTDIR, filename), "wb") as f:
+        written = f.write(content)
+    return written
+
 
 def main(argv):
-    sheets = CLIENT.open_by_url(TP_RESOURCES_SHEETS_URL)
-    fonts_sheet = sheets[FONTS_SHEET]
+    LOG.setLevel(argv.log_level)
 
-    downloads = []
-    for i, fontdef in enumerate(fonts_sheet):
-        if i == 0:  # you can't slice fonts_sheet but you can enumerate it...
-            continue
+    fonts = json.loads(download(JASIMA).decode("UTF-8"))["fonts"]
 
-        if argv.licenses and not (fontdef[LICENSE_COL] in VALID_LICENSES):
-            continue
+    for name, data in fonts.items():
+        if "fontfile" not in data["links"]:
+            continue  # unsupported
 
-        downloads.append(fontdef[DOWNLOAD_COL]) if fontdef[DOWNLOAD_COL] else None
+        if argv.licenses and not (data["license"] in VALID_LICENSES):
+            continue  # we can't distribute
 
-    print(downloads)
-    # each download is different
-    # some give the font artifact directly
-    # others are a zip file
-    # more aren't actually a direct download link, but a secondary link
+        # TODO: store last checked time la only check new fonts
+        # if datetime.strptime(data["last_updated"], "%Y-%m").date() >= ...:
+        #     continue
+
+        # TODO: unzip insa pi supa lape to fetch just the one file
+        # TODO: anything on Box and Drive cannot be directly downloaded
+
+        try:
+            LOG.debug("NAME: %s" % name)
+            download_url = data["links"]["fontfile"]
+            LOG.debug("LINK: %s" % download_url)
+            filename = (
+                get_filename(download_url)
+                if name not in NO_URL_NAME
+                else FILENAME_MAP[name]
+            )
+            LOG.debug("FILE: %s" % filename)
+            font = download(data["links"]["fontfile"])
+            write_font(filename, font)
+        except Exception as e:
+            LOG.error(e.__dict__)
 
 
 if __name__ == "__main__":
@@ -50,8 +96,16 @@ if __name__ == "__main__":
         description="Script to update locally tracked fonts"
     )
     parser.add_argument(
-        "-l",
+        "--log-level",
+        help="Set the log level",
+        type=str.upper,
+        dest="log_level",
+        default="INFO",
+        choices=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+    )
+    parser.add_argument(
         "--licenses",
+        help="Enable license checking, excluding fonts with non-open licenses",
         dest="licenses",
         default=False,
         action="store_true",

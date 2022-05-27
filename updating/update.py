@@ -26,7 +26,7 @@ VALID_LICENSES = [
     "OFL/GPL",
 ]  # TODO: these are just the ones in the doc
 
-FONTDIR = ".."
+FONTDIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 
 # TODO: unzipping + fetching behavior for ipsl
 SPECIAL = {"insa pi supa lape": lambda x: x}

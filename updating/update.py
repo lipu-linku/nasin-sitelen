@@ -21,6 +21,7 @@ VALID_LICENSES = [
     "OFL",
     "CC BY 4.0",
     "CC BY-SA 3.0",
+    "OFL/GPL",
 ]  # TODO: these are just the ones in the doc
 
 FONTDIR = ".."

@@ -28,6 +28,15 @@ FONTDIR = ".."
 # TODO: unzipping + fetching behavior for ipsl
 SPECIAL = {"insa pi supa lape": lambda x: x}
 
+BAD_HOSTS = {"drive.google.com", "app.box.com", "1drv.ms", "infinityfreeapp.com"}
+
+
+def can_download(url: str) -> bool:
+    for s in BAD_HOSTS:
+        if s in url:
+            return False
+    return True
+
 
 def download(url: str) -> bytes:
     req = urllib.request.Request(url, headers=HEADERS)

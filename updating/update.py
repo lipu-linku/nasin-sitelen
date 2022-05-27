@@ -74,25 +74,34 @@ def main(argv):
 
     for name, data in fonts.items():
         if "fontfile" not in data["links"]:
-            continue  # unsupported
+            LOG.warning("No download available for %s", name)
+            continue
 
         if argv.licenses and not (data["license"] in VALID_LICENSES):
-            continue  # we can't distribute
+            LOG.warning("Non-open license %s for %s", data["license"], name)
+            continue
 
         # TODO: store last checked time la only check new fonts
-        # if datetime.strptime(data["last_updated"], "%Y-%m").date() >= ...:
+        # if datetime.strptime(data["last_updated"], "%Y-%m").date() >= "TODO":
+        #     LOG.info("No update for %s since last check", name)
         #     continue
 
-        # TODO: unzip insa pi supa lape to fetch just the one file
-        # TODO: anything on Box and Drive cannot be directly downloaded
+        if not can_download(data["links"]["fontfile"]):
+            LOG.warning("Cannot download %s", name)
+            continue
 
         try:
-            LOG.debug("NAME: %s", name)
-            LOG.debug("LINK: %s", data["links"]["fontfile"])
-            LOG.debug("FILE: %s", data["filename"])
-            font = download(data["links"]["fontfile"])
-            write_font(data["filename"], font)
+            if name in SPECIAL:
+                font = SPECIAL[name](data["links"]["fontfile"])
+            else:
+                font = download(data["links"]["fontfile"])
+
+            if font:  # safety, don't overwrite
+                write_font(data["filename"], font)
+            else:
+                LOG.error("Did not download %s", name)
         except Exception as e:
+            LOG.error("Failed to download %s", name)
             LOG.error(e.__dict__)
 
 

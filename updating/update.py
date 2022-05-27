@@ -5,6 +5,8 @@ import json
 from datetime import datetime
 import os
 import logging
+from io import BytesIO
+from zipfile import ZipFile
 
 LOG = logging.getLogger()
 
@@ -42,6 +44,14 @@ def can_download(url: str) -> bool:
 def download(url: str) -> bytes:
     req = urllib.request.Request(url, headers=HEADERS)
     resp = urllib.request.urlopen(req).read()
+    return resp
+
+
+def download_zip(url: str, filename: str):
+    zipfile = ZipFile(BytesIO(download(url)))
+    f = zipfile.open(filename)
+    resp = f.read()
+    f.close()
     return resp
 
 

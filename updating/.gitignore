@@ -1,5 +1,0 @@
-.pdm.toml
-__pypackages__
-
-client_secret.json
-sheets.googleapis.com*

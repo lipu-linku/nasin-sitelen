@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 import argparse
-import pygsheets
-import requests
+import json
+import logging
+import os
+import urllib.request  # avoiding requests dep bc we can
+from datetime import datetime
+from io import BytesIO
+from zipfile import ZipFile
 
-CLIENT = pygsheets.authorize()
+LOG = logging.getLogger()
 
-TP_RESOURCES_SHEETS_URL = "https://docs.google.com/spreadsheets/d/1DMgOQHw3R5yyrNF9BwWw9nWMwYaxI7D40-oEhI2Gm-c"
+HEADERS = {  # pretend to be Chrome 101 for Discord links
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36"
+}
 
-
-FONTS_SHEET = 0
-
-# cols are 1 indexed
-DOWNLOAD_COL = 3
-LICENSE_COL = 7
+JASIMA = "https://raw.githubusercontent.com/lipu-linku/jasima/master/data.json"
 
 VALID_LICENSES = [
     "GPL",
@@ -21,28 +23,86 @@ VALID_LICENSES = [
     "OFL",
     "CC BY 4.0",
     "CC BY-SA 3.0",
+    "OFL/GPL",
 ]  # TODO: these are just the ones in the doc
+
+FONTDIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
+
+# map of special behaviors per font
+SPECIAL = {
+    "insa pi supa lape": lambda url: download_zip(url, "standard/supalape.otf"),
+    # TODO: below are maybe workaround-able
+    "sitelen Antowi": lambda url: None,
+    "sitelen Sans": lambda url: None,
+    "sitelen telo": lambda url: None,
+}
+
+BAD_HOSTS = {"drive.google.com", "app.box.com", "1drv.ms", "infinityfreeapp.com"}
+
+
+def can_download(url: str) -> bool:
+    for s in BAD_HOSTS:
+        if s in url:
+            return False
+    return True
+
+
+def download(url: str) -> bytes:
+    req = urllib.request.Request(url, headers=HEADERS)
+    resp = urllib.request.urlopen(req).read()
+    return resp
+
+
+def download_zip(url: str, filename: str):
+    zipfile = ZipFile(BytesIO(download(url)))
+    f = zipfile.open(filename)
+    resp = f.read()
+    f.close()
+    return resp
+
+
+def write_font(filename: str, content: bytes) -> int:
+    with open(os.path.join(FONTDIR, filename), "wb") as f:
+        written = f.write(content)
+    return written
 
 
 def main(argv):
-    sheets = CLIENT.open_by_url(TP_RESOURCES_SHEETS_URL)
-    fonts_sheet = sheets[FONTS_SHEET]
+    LOG.setLevel(argv.log_level)
 
-    downloads = []
-    for i, fontdef in enumerate(fonts_sheet):
-        if i == 0:  # you can't slice fonts_sheet but you can enumerate it...
+    fonts = json.loads(download(JASIMA).decode("UTF-8"))["fonts"]
+
+    for name, data in fonts.items():
+        if "fontfile" not in data["links"]:
+            LOG.warning("No download available for %s", name)
             continue
 
-        if argv.licenses and not (fontdef[LICENSE_COL] in VALID_LICENSES):
+        if argv.licenses and not (data["license"] in VALID_LICENSES):
+            LOG.warning("Non-open license %s for %s", data["license"], name)
             continue
 
-        downloads.append(fontdef[DOWNLOAD_COL]) if fontdef[DOWNLOAD_COL] else None
+        # TODO: store last checked time la only check new fonts
+        # if datetime.strptime(data["last_updated"], "%Y-%m").date() >= "TODO":
+        #     LOG.info("No update for %s since last check", name)
+        #     continue
 
-    print(downloads)
-    # each download is different
-    # some give the font artifact directly
-    # others are a zip file
-    # more aren't actually a direct download link, but a secondary link
+        if not can_download(data["links"]["fontfile"]):
+            LOG.warning("Cannot download %s", name)
+            continue
+
+        try:
+            if name in SPECIAL:
+                font = SPECIAL[name](data["links"]["fontfile"])
+            else:
+                font = download(data["links"]["fontfile"])
+
+            if font:  # safety, don't overwrite
+                write_font(data["filename"], font)
+            else:
+                LOG.error("Did not download %s", name)
+        except Exception as e:
+            LOG.error("Failed to download %s", name)
+            LOG.error(e.__dict__)
 
 
 if __name__ == "__main__":
@@ -50,8 +110,16 @@ if __name__ == "__main__":
         description="Script to update locally tracked fonts"
     )
     parser.add_argument(
-        "-l",
+        "--log-level",
+        help="Set the log level",
+        type=str.upper,
+        dest="log_level",
+        default="INFO",
+        choices=["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+    )
+    parser.add_argument(
         "--licenses",
+        help="Enable license checking, excluding fonts with non-open licenses",
         dest="licenses",
         default=False,
         action="store_true",

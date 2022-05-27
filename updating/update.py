@@ -28,8 +28,14 @@ VALID_LICENSES = [
 
 FONTDIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 
-# TODO: unzipping + fetching behavior for ipsl
-SPECIAL = {"insa pi supa lape": lambda x: x}
+# map of special behaviors per font
+SPECIAL = {
+    "insa pi supa lape": lambda url: download_zip(url, "standard/supalape.otf"),
+    # TODO: below are maybe workaround-able
+    "sitelen Antowi": lambda url: None,
+    "sitelen Sans": lambda url: None,
+    "sitelen telo": lambda url: None,
+}
 
 BAD_HOSTS = {"drive.google.com", "app.box.com", "1drv.ms", "infinityfreeapp.com"}
 

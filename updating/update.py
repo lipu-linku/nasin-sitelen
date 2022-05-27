@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import argparse
-import urllib.request  # avoiding requests dep bc we can
 import json
-from datetime import datetime
-import os
 import logging
+import os
+import urllib.request  # avoiding requests dep bc we can
+from datetime import datetime
 from io import BytesIO
 from zipfile import ZipFile
 

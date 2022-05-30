@@ -19,7 +19,7 @@ JASIMA = "https://raw.githubusercontent.com/lipu-linku/jasima/master/data.json"
 VALID_LICENSES = [
     "GPL",
     "MIT",
-    "CC",
+    "CC0",
     "OFL",
     "CC BY 4.0",
     "CC BY-SA 3.0",

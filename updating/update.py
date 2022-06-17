@@ -121,7 +121,7 @@ if __name__ == "__main__":
         "--licenses",
         help="Enable license checking, excluding fonts with non-open licenses",
         dest="licenses",
-        default=False,
+        default=True,
         action="store_true",
     )
     ARGV = parser.parse_args()

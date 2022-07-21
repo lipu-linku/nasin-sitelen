@@ -77,6 +77,10 @@ def main(argv):
             LOG.warning("No download available for %s", name)
             continue
 
+        if argv.licenses and not ("license" in data):
+            LOG.warning("No license available for %s", name)
+            continue
+
         if argv.licenses and not (data["license"] in VALID_LICENSES):
             LOG.warning("Non-open license %s for %s", data["license"], name)
             continue

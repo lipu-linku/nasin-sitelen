@@ -16,15 +16,12 @@ HEADERS = {  # pretend to be Chrome 101 for Discord links
 
 JASIMA = "https://raw.githubusercontent.com/lipu-linku/jasima/master/data.json"
 
-VALID_LICENSES = [
+VALID_LICENSE_FAMILIES = [
     "GPL",
     "MIT",
-    "CC0",
     "OFL",
-    "CC BY 4.0",
-    "CC BY-SA 3.0",
-    "OFL/GPL",
-]  # TODO: these are just the ones in the doc
+    "CC",
+]
 
 FONTDIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 
@@ -38,6 +35,16 @@ SPECIAL = {
 }
 
 BAD_HOSTS = {"drive.google.com", "app.box.com", "1drv.ms", "infinityfreeapp.com"}
+
+
+def is_valid_license(to_check: str) -> bool:
+    """an incomplete enumeration of licenses this project accepts"""
+    for license_id in VALID_LICENSE_FAMILIES:
+        if to_check.startswith(license_id):
+            # catch families of licenses such as GPL*, CC*
+            return True
+
+    return False
 
 
 def can_download(url: str) -> bool:
@@ -81,7 +88,7 @@ def main(argv):
             LOG.warning("No license available for %s", name)
             continue
 
-        if argv.licenses and not (data["license"] in VALID_LICENSES):
+        if argv.licenses and not is_valid_license(data["license"]):
             LOG.warning("Non-open license %s for %s", data["license"], name)
             continue
 

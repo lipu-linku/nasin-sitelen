@@ -4,7 +4,7 @@ name: Cronjob for nasin-sitelen
 
 on:
   schedule:
-    - cron: '0 30 * * *'
+    - cron: '30 0 * * *'
 
 permissions:
   contents: write

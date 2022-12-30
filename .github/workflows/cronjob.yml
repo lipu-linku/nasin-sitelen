@@ -33,5 +33,6 @@ jobs:
         cd updating
         python update.py
         cd ..
-        git commit -am "Bump for $(date --iso-8601)"
+        git add -A
+        git commit -m "Bump for $(date --iso-8601)"
         git push "https://$(GITHUB_TOKEN)@github.com/lipu-linku/nasin-sitelen.git"
